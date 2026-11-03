@@ -1,14 +1,11 @@
 import tensorflow as tf
 from typing import Literal
 
-PI = 3.141592653
+PI = 3.141592653589793
 
-def kde(eval_pts,sim,bw,
-        nsamples_data = 10000,
-        nsamples_sim = 10000,
-        compute: Literal["log","normal"] = "log"):
+def nll(eval_pts,sim,bw):
     '''
-    Computes KDE or log KDE
+    Computes negative log likelihood
 
     Parameters
     ----------
@@ -25,13 +22,7 @@ def kde(eval_pts,sim,bw,
     
     bw : float
         Bandwidth
-    
-    compute : string, default='log'
-        Either 'log' or 'normal'
-
     '''
-    eval_pts = eval_pts[:nsamples_data,:]
-    sim = sim[:nsamples_sim,:]
 
     # Convert all to same dtype
     eval_pts = tf.convert_to_tensor(eval_pts)
@@ -51,7 +42,4 @@ def kde(eval_pts,sim,bw,
 
     log_kde = log_sum - log_norm
 
-    if compute == 'normal':
-        return tf.exp(log_kde)
-
-    return log_kde
+    return -tf.reduce_sum(log_kde)
