@@ -68,7 +68,7 @@ class MLSimRescaler(km.Model):
         data = tf.convert_to_tensor(data,dtype=tf.float32)
         sim = tf.convert_to_tensor(sim,dtype=tf.float32)
         
-        with tf.GradientTape as tape:
+        with tf.GradientTape() as tape:
             loss = self.get_loss(data,sim)
 
         gradient = tape.gradient(loss, self.trainable_weights)
@@ -99,7 +99,7 @@ class MLSimRescaler(km.Model):
         if 'PSum' not in sim_df.columns:
             sim_df['PSum'] = sim_df[[c+"OFamps" for c in CHAN_LIST]].sum(axis=1)
 
-        norm_sim = sim_df[[c+"OFamps" for c in CHAN_LIST]].to_numpy().reshape((len(sim_df),12))/sim_df['PSum']
+        norm_sim = sim_df[[c+"OFamps" for c in CHAN_LIST]].to_numpy().reshape((len(sim_df),12))/sim_df['PSum'].to_numpy()[:,None]
 
         pred = self.model(tf.convert_to_tensor(norm_sim, dtype=tf.float32)).numpy()
         unnorm = pred * sim_df['PSum'].to_numpy()[:, None]
