@@ -93,8 +93,11 @@ class MLSimRescaler(km.Model):
     def call(self,inputs):
         return self.model(inputs)
 
-    def apply(self):
-        sim_df = self.sim_df.copy()
+    def apply(self,sim_df=None):
+        if sim_df is None:
+            sim_df = self.sim_df.copy()
+        else:
+            sim_df = sim_df.copy()
 
         if 'PSum' not in sim_df.columns:
             sim_df['PSum'] = sim_df[[c+"OFamps" for c in CHAN_LIST]].sum(axis=1)
@@ -106,5 +109,7 @@ class MLSimRescaler(km.Model):
 
         for ind,c in enumerate(CHAN_LIST):
             sim_df[c+"OFamps"] = unnorm[:, ind]
+        
+        sim_df['PSum'] = sim_df[[c+"OFamps" for c in CHAN_LIST]].sum(axis=1)
 
-        return sim_df  
+        return sim_df

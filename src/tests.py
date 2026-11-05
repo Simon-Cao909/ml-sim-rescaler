@@ -70,7 +70,7 @@ rescaler.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=1e-2)
 )
 
-EPOCHS = 500
+EPOCHS = 100
 
 for epoch in range(EPOCHS):
     rescaler.loss_tracker.reset_state()
@@ -82,7 +82,7 @@ for epoch in range(EPOCHS):
         f"- Loss: {logs['loss'].numpy():.6f}"
     )
 
-result_df = rescaler.apply()
+result_df = rescaler.apply(sim_df)
 
 print(result_df.head())
 
