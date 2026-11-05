@@ -57,7 +57,13 @@ class MLSimRescaler(km.Model):
         norm_psum = tf.reduce_sum(sim,axis=1)
 
         # Need to maintain constant total energy
-        loss = nll(data,sim,self.bandwidth) + tf.reduce_mean(tf.square(norm_psum - 1.0))*1000
+        energy_loss = tf.reduce_mean(tf.square(norm_psum - 1.0))*1e4
+
+        individual_loss = 0
+        for i in range(0,12):
+            individual_loss += nll(data[:,i:i+1],sim[:,i:i+1],self.bandwidth)*12
+
+        loss = nll(data,sim,self.bandwidth) + energy_loss + individual_loss
 
         return loss
 
