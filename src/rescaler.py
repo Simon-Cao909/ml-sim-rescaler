@@ -11,13 +11,14 @@ CHAN_LIST = ('PAS1','PBS1','PCS1','PDS1','PES1','PFS1',
 class MLSimRescaler(km.Model):
     def __init__(self,
                  model,
-                 sim_df,
+                 sim_df,data_df,
                  bandwidth: float = 0.003,
                  samples_data: int = 1000,
                  samples_sim: int = 1000):
 
         super().__init__()
         self.sim_df = sim_df
+        self.data_df = data_df
         self.bandwidth = bandwidth
         self.samples_data = samples_data
         self.samples_sim = samples_sim
@@ -26,8 +27,10 @@ class MLSimRescaler(km.Model):
 
         self.loss_tracker = kmet.Mean()
 
-    def process(self,data_df):
-        data_df = data_df.copy()
+        self.process()
+
+    def process(self):
+        data_df = self.data_df.copy()
         sim_df = self.sim_df.copy()
 
         if 'PSum' not in sim_df.columns:
@@ -42,8 +45,8 @@ class MLSimRescaler(km.Model):
 
         self.sim_psum = sim_df['PSum']
         self.data_psum = data_df['PSum']
-        self.norm_sim = sim_df[[c+"OFamps" for c in CHAN_LIST]].to_numpy().reshape((len(sim_df),12))/self.sim_psum
-        self.norm_data = data_df[[c+"OFamps" for c in CHAN_LIST]].to_numpy().reshape((len(data_df),12))/self.data_psum
+        self.norm_sim = sim_df[[c+"OFamps" for c in CHAN_LIST]].to_numpy().reshape((len(sim_df),12))/self.sim_psum.to_numpy()[:, None]
+        self.norm_data = data_df[[c+"OFamps" for c in CHAN_LIST]].to_numpy().reshape((len(data_df),12))/self.data_psum.to_numpy()[:, None]
 
     @property
     def metrics(self):
@@ -54,18 +57,16 @@ class MLSimRescaler(km.Model):
         norm_psum = tf.reduce_sum(sim,axis=1)
 
         # Need to maintain constant total energy
-        loss = nll(data,sim,self.bandwidth) + tf.reduce_sum(tf.square(norm_psum - 1.0))
+        loss = nll(data,sim,self.bandwidth) + tf.reduce_mean(tf.square(norm_psum - 1.0))*1000
 
         return loss
 
-    def train_step(self,data_df):
-        self.process(data_df)
-
+    def train_step(self, _):
         data = self.norm_data[:self.samples_data]
         sim = self.norm_sim[:self.samples_sim]
 
-        data = tf.convert_to_tensor(data)
-        sim = tf.convert_to_tensor(sim)
+        data = tf.convert_to_tensor(data,dtype=tf.float32)
+        sim = tf.convert_to_tensor(sim,dtype=tf.float32)
         
         with tf.GradientTape as tape:
             loss = self.get_loss(data,sim)
@@ -77,14 +78,12 @@ class MLSimRescaler(km.Model):
         
         return {'loss':self.loss_tracker.result()}
 
-    def test_step(self,data_df):
-        self.process(data_df)
-
+    def test_step(self, _):
         data = self.norm_data[:self.samples_data]
         sim = self.norm_sim[:self.samples_sim]
 
-        data = tf.convert_to_tensor(data)
-        sim = tf.convert_to_tensor(sim)
+        data = tf.convert_to_tensor(data,dtype=tf.float32)
+        sim = tf.convert_to_tensor(sim,dtype=tf.float32)
 
         loss = self.get_loss(data,sim)
         self.loss_tracker.update_state(loss)
@@ -102,11 +101,10 @@ class MLSimRescaler(km.Model):
 
         norm_sim = sim_df[[c+"OFamps" for c in CHAN_LIST]].to_numpy().reshape((len(sim_df),12))/sim_df['PSum']
 
-        pred = self.model(norm_sim)
+        pred = self.model(tf.convert_to_tensor(norm_sim, dtype=tf.float32)).numpy()
         unnorm = pred * sim_df['PSum'].to_numpy()[:, None]
 
         for ind,c in enumerate(CHAN_LIST):
             sim_df[c+"OFamps"] = unnorm[:, ind]
 
-        return sim_df
-            
+        return sim_df  
