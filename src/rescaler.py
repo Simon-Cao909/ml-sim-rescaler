@@ -59,11 +59,11 @@ class MLSimRescaler(km.Model):
         # Need to maintain constant total energy
         energy_loss = tf.reduce_mean(tf.square(norm_psum - 1.0))*1e4
 
-        individual_loss = 0
-        for i in range(0,12):
-            individual_loss += nll(data[:,i:i+1],sim[:,i:i+1],self.bandwidth)*12
+        # individual_loss = 0
+        # for i in range(0,12):
+        #     individual_loss += nll(data[:,i:i+1],sim[:,i:i+1],self.bandwidth)*12
 
-        loss = nll(data,sim,self.bandwidth) + energy_loss + individual_loss
+        loss = nll(data,sim,self.bandwidth) + energy_loss #+ individual_loss
 
         return loss
 
